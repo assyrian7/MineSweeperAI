@@ -62,8 +62,8 @@ class MyAI( AI ):
 			if self.flagging: 
 				self.flagging = False
 			if self.uncovering: 
-				self.uncovering = False 
-		
+				self.uncovering = False
+
 		if self.makingMove:
 			self.currX = self.tempGrid[self.tempIndex][0]
 			self.currY = self.tempGrid[self.tempIndex][1]
@@ -71,14 +71,22 @@ class MyAI( AI ):
 			if self.flagging:
 				return Action(AI.Action.FLAG, self.currX, self.currY)
 			elif self.uncovering:
-				print("Uncov: row " + str(self.currY) + " col " + str(self.currX))
 				return Action(AI.Action.UNCOVER, self.currX, self.currY)
 		
 		if len(self.q) > 0:
 			searchSpace = list(self.q)
 			while len(searchSpace) > 0:
 				tile = searchSpace.pop()
-				if self.onlyMines(tile[0], tile[1]):
+				if self.onlyUncovered(tile[0], tile[1]):
+					self.uncoverRest(tile[0], tile[1])
+					self.q.remove(tile)
+					self.p.add(tile)
+					if(len(self.tempGrid) > 0):
+						self.tempIndex += 1
+						self.currX = self.tempGrid[0][0]
+						self.currY = self.tempGrid[0][1] 
+					return Action(AI.Action.UNCOVER, self.currX, self.currY)
+				elif self.onlyMines(tile[0], tile[1]):
 					self.flagMines(tile[0], tile[1])
 					self.q.remove(tile)
 					self.p.add(tile)
@@ -86,23 +94,15 @@ class MyAI( AI ):
 					self.currX = self.tempGrid[0][0]
 					self.currY = self.tempGrid[0][1] 
 					return Action(AI.Action.FLAG, self.currX, self.currY)
-				elif self.onlyUncovered(tile[0], tile[1]):
-					self.uncoverRest(tile[0], tile[1])
-					self.q.remove(tile)
-					self.p.add(tile)
-					self.tempIndex += 1
-					self.currX = self.tempGrid[0][0]
-					self.currY = self.tempGrid[0][1] 
-					return Action(AI.Action.UNCOVER, self.currX, self.currY)
-			
 			
 			'''Do heuristic move
 			   A flagging heuristic works better than an uncovering heuristic
 			'''
 			guessTile = self.flagHeuristic()
+			if guessTile in self.q:
+				self.q.remove(guessTile)
 			self.currX = guessTile[0]
 			self.currY = guessTile[1]
-			self.q.remove(guessTile)
 			self.p.add(guessTile)
 			return Action(AI.Action.FLAG, self.currX, self.currY)
 			
@@ -172,6 +172,9 @@ class MyAI( AI ):
 		mines = self.grid[y][x]
 		if mines == 0:
 			return False
+		for coor in grid:
+			if self.grid[coor[1]][coor[0]] == -1:
+				mines -= 1
 		uncovered = 0
 		for coor in grid:
 			if self.grid[coor[1]][coor[0]] == -2:
@@ -190,32 +193,24 @@ class MyAI( AI ):
 		return mines == flagged
 
 	def flagMines(self, x: int, y: int):
-		print("Flagging Index: " + str(x) + " " + str(y))
 		grid = self.getGrid(x, y)
-		print(grid)
-		for coor in grid:
-			print(str(self.grid[coor[1]][coor[0]]))
-		for i in range(len(grid)):
-			if self.grid[grid[i][1]][grid[i][0]] != -2:
-				del grid[i]
-		self.tempGrid = grid
+		temp = grid[:]
+		for i in grid:
+			if self.grid[i[1]][i[0]] != -2:
+				temp.remove(i)
+		self.tempGrid = temp
 		self.currX = x
 		self.currY = y
 		self.makingMove = True
 		self.flagging = True
 
 	def uncoverRest(self, x: int, y: int):
-		print("Uncovering Index: " + str(x) + " " + str(y) + " value: " + str(self.grid[y][x]))
 		grid = self.getGrid(x, y)
-		print(grid)
-		print(self.grid)
-		for coor in grid:
-			print(str(self.grid[coor[1]][coor[0]]))
-		for i in range(len(grid)):
-			if self.grid[grid[i][1]][grid[i][0]] != -2:
-				del grid[i]
-		print(grid)
-		self.tempGrid = grid
+		temp = grid[:]
+		for i in grid:
+			if self.grid[i[1]][i[0]] != -2:
+				temp.remove(i)
+		self.tempGrid = temp
 		self.currX = x
 		self.currY = y
 		self.makingMove = True
