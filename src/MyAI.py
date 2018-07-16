@@ -39,7 +39,10 @@ class MyAI( AI ):
 		self.makingMove = False
 		self.flagging = False
 		self.uncovering = False
+		self.madeHeuristic = False
+		self.falseMoves = set()
 		self.tempNum = 0
+		self.unflagged = False
 		pass
 		########################################################################
 		#							YOUR CODE ENDS							   #
@@ -51,7 +54,10 @@ class MyAI( AI ):
 		########################################################################
 		#							YOUR CODE BEGINS						   #
 		########################################################################
-		self.grid[self.currY][self.currX] = number
+		if not self.unflagged:
+			self.grid[self.currY][self.currX] = number
+		if self.unflagged:
+			self.unflagged = False
 		if number != -1 and (self.currX, self.currY) not in self.p:
 			self.q.add((self.currX, self.currY))
 
@@ -72,6 +78,18 @@ class MyAI( AI ):
 				return Action(AI.Action.FLAG, self.currX, self.currY)
 			elif self.uncovering:
 				return Action(AI.Action.UNCOVER, self.currX, self.currY)
+		
+		if self.madeHeuristic == True:
+			if not self.validateHeuristic(self.currX, self.currY):
+				print((self.currX, self.currY))
+				self.falseMoves.add((self.currX, self.currY))
+				if (self.currX, self.currY) in self.p:
+					self.p.remove((self.currX, self.currY))
+				self.unflagged = True
+				self.grid[self.currY][self.currX] = -2
+				self.madeHeuristic = False
+				return Action(AI.Action.UNFLAG, self.currX, self.currY)
+			self.madeHeuristic = False
 		
 		if len(self.q) > 0:
 			searchSpace = list(self.q)
@@ -99,11 +117,9 @@ class MyAI( AI ):
 			   A flagging heuristic works better than an uncovering heuristic
 			'''
 			guessTile = self.flagHeuristic()
-			if guessTile in self.q:
-				self.q.remove(guessTile)
 			self.currX = guessTile[0]
 			self.currY = guessTile[1]
-			self.p.add(guessTile)
+			self.madeHeuristic = True
 			return Action(AI.Action.FLAG, self.currX, self.currY)
 			
 		return Action(AI.Action.LEAVE)
@@ -223,13 +239,32 @@ class MyAI( AI ):
 			tileGrid = self.getGrid(tile[0], tile[1])
 			number = self.grid[tile[1]][tile[0]]
 			for square in tileGrid:
+				if self.grid[square[1]][square[0]] == -1:
+					number -= 1
+			for square in tileGrid:
 				if self.grid[square[1]][square[0]] == -2:
 					grid[square[1] * self.rowDimension + square[0]] += number
-		coor = searchSpace.index(max(searchSpace))
+		coor = grid.index(max(grid))
 		coorX = coor % self.colDimension
 		coorY = math.floor(coor / self.rowDimension)
+		while (coorX, coorY) in self.falseMoves:
+			coor = grid[coor+1:].index(max(grid))
+			coorX = coor % self.colDimension
+			coorY = math.floor(coor / self.rowDimension)
+			print((coorX, coorY))
 		print("Heuristic Index: " + str(coorX) + " " + str(coorY))
 		return coorX, coorY
+		
+	def validateHeuristic(self, x: int, y: int) -> bool:
+		grid = self.getGrid(x, y)
+		guess = (self.currX, self.currY)
+		for i in grid:
+			if self.grid[i[1]][i[0]] < 0:
+				continue
+			if self.onlyMines(guess[0], guess[1]) or self.onlyUncovered(guess[0], guess[1]):
+				return True
+		return False
+		
 				
 			
 			
