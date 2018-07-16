@@ -14,7 +14,7 @@
 
 from AI import AI
 from Action import Action
-from sets import Set
+import math
 
 class MyAI( AI ):
 
@@ -34,7 +34,8 @@ class MyAI( AI ):
 		self.tempGrid = []
 		self.states = [0 for i in range(3)]
 		self.tempIndex = 0
-		self.q = Set()
+		self.q = set()
+		self.p = set()
 		self.makingMove = False
 		self.flagging = False
 		self.uncovering = False
@@ -50,140 +51,198 @@ class MyAI( AI ):
 		########################################################################
 		#							YOUR CODE BEGINS						   #
 		########################################################################
-		self.grid[self.currX][self.currY] = number
-		if number != -1:
+		self.grid[self.currY][self.currX] = number
+		if number != -1 and (self.currX, self.currY) not in self.p:
 			self.q.add((self.currX, self.currY))
 
 		if self.tempIndex >= len(self.tempGrid) and self.makingMove:
 			self.tempIndex = 0
 			self.makingMove = False
-			if flagging: flagging = False
-			elif uncovering: uncovering = False 
-			
-		if self.makingMove:
-			self.currX = self.tempGrid[tempIndex][0]
-			self.currY = self.tempGrid[tempIndex][1]
-			tempIndex+=1
-			if flagging:
-				return Action(AI.Action.FLAG, self.currX, self.currY)
-			elif uncovering:
-				return Action(AI.Action.UNCOVER, self.currX, self.currY)
-
-		tile = self.q.pop()
-		if self.onlyMines(tile[0], tile[1]):
-			self.flagMines(tile[0], tile[1])
-			return Action(AI.Action.UNCOVER, self.tempGrid[0][0], self.tempGrid[0][1])
-		elif self.onlyUncovered(tile[0], tile[1]):
-			self.uncoverRest(tile[0], tile[1])
-			return Action(AI.Action.UNCOVER, self.tempGrid[0][0], self.tempGrid[0][1])
+			del self.tempGrid[:]
+			if self.flagging: 
+				self.flagging = False
+			if self.uncovering: 
+				self.uncovering = False 
 		
-		'''
-		if self.tempIndex >= len(tempGrid):
-			self.makingMove = False
-			self.tempIndex = 0
-
-		if self.grid[curX][curY]
-
-
 		if self.makingMove:
-			self.currX = self.tempGrid[tempIndex][0]
-			self.currY = self.tempGrid[tempIndex][1]
-			tempIndex+=1
-			return Action(AI.Action.UNCOVER, self.currX, self.currY)
-
-		if number >= 0:
-			self.grid[curX][curY] = number
-			if number == 0:
-				self.tempGrid = getGrid(curX, curY)
-				self.searching = True
-		'''
+			self.currX = self.tempGrid[self.tempIndex][0]
+			self.currY = self.tempGrid[self.tempIndex][1]
+			self.tempIndex+=1
+			if self.flagging:
+				return Action(AI.Action.FLAG, self.currX, self.currY)
+			elif self.uncovering:
+				print("Uncov: row " + str(self.currY) + " col " + str(self.currX))
+				return Action(AI.Action.UNCOVER, self.currX, self.currY)
+		
+		if len(self.q) > 0:
+			searchSpace = list(self.q)
+			while len(searchSpace) > 0:
+				tile = searchSpace.pop()
+				if self.onlyMines(tile[0], tile[1]):
+					self.flagMines(tile[0], tile[1])
+					self.q.remove(tile)
+					self.p.add(tile)
+					self.tempIndex += 1
+					self.currX = self.tempGrid[0][0]
+					self.currY = self.tempGrid[0][1] 
+					return Action(AI.Action.FLAG, self.currX, self.currY)
+				elif self.onlyUncovered(tile[0], tile[1]):
+					self.uncoverRest(tile[0], tile[1])
+					self.q.remove(tile)
+					self.p.add(tile)
+					self.tempIndex += 1
+					self.currX = self.tempGrid[0][0]
+					self.currY = self.tempGrid[0][1] 
+					return Action(AI.Action.UNCOVER, self.currX, self.currY)
+			
+			
+			'''Do heuristic move
+			   A flagging heuristic works better than an uncovering heuristic
+			'''
+			guessTile = self.flagHeuristic()
+			self.currX = guessTile[0]
+			self.currY = guessTile[1]
+			self.q.remove(guessTile)
+			self.p.add(guessTile)
+			return Action(AI.Action.FLAG, self.currX, self.currY)
+			
 		return Action(AI.Action.LEAVE)
 		########################################################################
 		#							YOUR CODE ENDS							   #
 		########################################################################
 
-	def getGrid(x: int, y: int) -> list:
+	def getGrid(self, curX: int, curY: int) -> list:
 		grid = []
-		if (curX == 0 and curY == 0) or (curX == (rowDimension - 1) and curY == 0) or (curX == 0 and curY == (colDimension - 1)) or (curX == (rowDimension - 1) and curY == (colDimension - 1)):
+		if (curX == 0 and curY == 0) or (curX == (self.colDimension - 1) and curY == 0) or (curX == 0 and curY == (self.rowDimension - 1)) or (curX == (self.colDimension - 1) and curY == (self.rowDimension - 1)):
 			if curX == 0 and curY == 0:
 				grid.append((curX, curY + 1))
 				grid.append((curX + 1, curY))
-			elif curX == (rowDimension - 1) and curY == 0:
+				grid.append((curX + 1, curY + 1))
+			elif curX == (self.colDimension - 1) and curY == 0:
 				grid.append((curX - 1, curY))
 				grid.append((curX, curY + 1))
-			elif curX == 0 and curY == (colDimension - 1):
+				grid.append((curX - 1, curY + 1))
+			elif curX == 0 and curY == (self.rowDimension - 1):
 				grid.append((curX, curY - 1))
 				grid.append((curX + 1, curY))
-			elif curX == (rowDimension - 1) and curY == (colDimension - 1):
+				grid.append((curX + 1, curY - 1))
+			elif curX == (self.colDimension - 1) and curY == (self.rowDimension - 1):
 				grid.append((curX - 1, curY))
 				grid.append((curX, curY -  1))
-		elif curX == 0 or curX == (rowDimension - 1):
+				grid.append((curX - 1, curY - 1))
+		elif curX == 0 or curX == (self.colDimension - 1):
 			if curX == 0:
 				grid.append((curX, curY - 1))
 				grid.append((curX + 1, curY - 1))
 				grid.append((curX + 1, curY))
 				grid.append((curX + 1, curY + 1))
 				grid.append((curX, curY + 1))
-			elif curX == (rowDimension - 1):
+			elif curX == (self.colDimension - 1):
 				grid.append((curX, curY - 1))
 				grid.append((curX - 1, curY - 1))
 				grid.append((curX - 1, curY))
 				grid.append((curX - 1, curY + 1))
 				grid.append((curX, curY + 1))
-		elif curY == 0 || curY == (colDimension - 1):
+		elif curY == 0 or curY == (self.rowDimension - 1):
 			if curY == 0:
 				grid.append((curX - 1, curY))
 				grid.append((curX - 1, curY + 1))
 				grid.append((curX, curY + 1))
 				grid.append((curX + 1, curY + 1))
 				grid.append((curX + 1, curY))
-			elif curY == (colDimension - 1):
+			elif curY == (self.rowDimension - 1):
 				grid.append((curX - 1, curY))
 				grid.append((curX - 1, curY - 1))
 				grid.append((curX, curY - 1))
 				grid.append((curX + 1, curY - 1))
 				grid.append((curX + 1, curY))
 		else:
-			for i in range(curX-1, curY+2):
-				for j in range(curY-1, curY+2):
-					grid.append((i,j))
+			for i in range(curY-1, curY+2):
+				for j in range(curX-1, curX+2):
+					if j == curX and i == curY:
+						continue
+					grid.append((j,i))
+		return grid
 
 	def outOfBounds(self, x: int, y: int) -> bool:
-		return x >= 0 and y >= 0 and x < self.rowDimension and y < colDimension
+		return x >= 0 and y >= 0 and x < self.colDimension and y < self.rowDimension
 
 	def onlyMines(self, x: int, y: int) -> bool:
 		grid = self.getGrid(x, y)
-		mines = self.grid[x][y]
+		mines = self.grid[y][x]
+		if mines == 0:
+			return False
 		uncovered = 0
 		for coor in grid:
-			if self.grid[coor[0]][coor[1]] == -2:
+			if self.grid[coor[1]][coor[0]] == -2:
 				uncovered+=1
 		return mines == uncovered
 
 	def onlyUncovered(self, x: int, y: int) -> bool:
 		grid = self.getGrid(x, y)
-		mines = self.grid[x][y]
+		mines = self.grid[y][x]
+		if mines == 0:
+			return True
 		flagged = 0
 		for coor in grid:
-			if self.grid[coor[0]][coor[1]] == -1:
+			if self.grid[coor[1]][coor[0]] == -1:
 				flagged+=1
 		return mines == flagged
 
 	def flagMines(self, x: int, y: int):
+		print("Flagging Index: " + str(x) + " " + str(y))
 		grid = self.getGrid(x, y)
+		print(grid)
+		for coor in grid:
+			print(str(self.grid[coor[1]][coor[0]]))
 		for i in range(len(grid)):
-			if self.grid[grid[i][0]][grid[i][1]] != -2:
+			if self.grid[grid[i][1]][grid[i][0]] != -2:
 				del grid[i]
 		self.tempGrid = grid
+		self.currX = x
+		self.currY = y
 		self.makingMove = True
 		self.flagging = True
 
 	def uncoverRest(self, x: int, y: int):
+		print("Uncovering Index: " + str(x) + " " + str(y) + " value: " + str(self.grid[y][x]))
 		grid = self.getGrid(x, y)
+		print(grid)
+		print(self.grid)
+		for coor in grid:
+			print(str(self.grid[coor[1]][coor[0]]))
 		for i in range(len(grid)):
-			if self.grid[grid[i][0]][grid[i][1]] != -2:
+			if self.grid[grid[i][1]][grid[i][0]] != -2:
 				del grid[i]
+		print(grid)
 		self.tempGrid = grid
+		self.currX = x
+		self.currY = y
 		self.makingMove = True
 		self.uncovering = True
 
+	def flagHeuristic(self) -> tuple:
+		searchSpace = list(self.q)
+		grid = [0 for i in range(self.rowDimension * self.colDimension)]
+		for tile in searchSpace:
+			tileGrid = self.getGrid(tile[0], tile[1])
+			number = self.grid[tile[1]][tile[0]]
+			for square in tileGrid:
+				if self.grid[square[1]][square[0]] == -2:
+					grid[square[1] * self.rowDimension + square[0]] += number
+		coor = searchSpace.index(max(searchSpace))
+		coorX = coor % self.colDimension
+		coorY = math.floor(coor / self.rowDimension)
+		print("Heuristic Index: " + str(coorX) + " " + str(coorY))
+		return coorX, coorY
+				
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			 

@@ -93,17 +93,20 @@ class World():
 				self.__printWorld()
 			if self.__movesMade > self.__movesLimit:
 				break;
-
+			global xx
+			global yy
 			try: 
 				action = self.__ai.getAction(self.__perceptNumber)
+				xx = action.getX()
+				yy = action.getY()
 				if self.__checkValidAction(action):
 					if self.__doMove(action):
 						break
 			except ValueError:
 				print("Error: Invalid action!")
 			except IndexError:
-				print("Error: Move is out of bounds!")
-
+				print("Error: Move is out of bounds! index: " + str(xx) + " " + str(yy))
+				exit()
 			if self.__debug and type(self.__ai) != ManualAI:
 				input("Press ENTER to continue...")
 		self.__handleGameover()
@@ -132,9 +135,10 @@ class World():
 		move = actionObj.getMove()
 		X = actionObj.getX()
 		Y = actionObj.getY()
-		if move in [AI.Action.LEAVE, AI.Action.UNCOVER, AI.Action.FLAG, AI.Action.UNFLAG]:
+		if move in [AI.Action.LEAVE, AI.Action.UNCOVER, AI.Action.FLAG, AI.Action.UNFLAG]:		
 			if self.__isInBounds(X, Y):
 				return True
+			print("Invalid " + str(X) + " " + str(Y))
 			raise IndexError
 		raise ValueError
 
@@ -165,7 +169,7 @@ class World():
 		# UNCOVER
 		elif move == AI.Action.UNCOVER:
 			if self.__board[X][Y].mine:
-				if type(self.__ai) == ManualAI or self.__debug:
+				if type(self.__ai) == MyAI or self.__debug:
 					print("Gameover! Uncovered a mine! " + str(X+1), str(Y+1))
 				return True 						# Agent uncovered a mine
 			if type(self.__ai) == ManualAI:
@@ -372,6 +376,7 @@ class World():
 
 	def __isInBounds(self, c: int, r: int) -> bool:
 		""" Returns true if given coordinates are within the boundaries of the game board """
+		print("Checking index: row " + str(r) + " col " + str(c) + " " + str(c < self.__colDimension and c >= 0 and r < self.__rowDimension and r >= 0))
 		if c < self.__colDimension and c >= 0 and r < self.__rowDimension and r >= 0:
 			return True
 		return False
