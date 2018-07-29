@@ -14,6 +14,7 @@
 
 from AI import AI
 from Action import Action
+from random import randrange
 import math
 
 class MyAI( AI ):
@@ -80,6 +81,7 @@ class MyAI( AI ):
 				return Action(AI.Action.UNCOVER, self.currX, self.currY)
 		
 		if self.madeHeuristic == True:
+			'''
 			if not self.validateHeuristic(self.currX, self.currY):
 				print((self.currX, self.currY))
 				self.falseMoves.add((self.currX, self.currY))
@@ -89,13 +91,18 @@ class MyAI( AI ):
 				self.grid[self.currY][self.currX] = -2
 				self.madeHeuristic = False
 				return Action(AI.Action.UNFLAG, self.currX, self.currY)
+			print(self.grid)
+			'''
 			self.madeHeuristic = False
 		
 		if len(self.q) > 0:
 			searchSpace = list(self.q)
 			while len(searchSpace) > 0:
 				tile = searchSpace.pop()
-				if self.onlyUncovered(tile[0], tile[1]):
+				if self.empty(tile[0], tile[1]):
+					self.q.remove(tile)
+					self.p.add(tile)
+				elif self.onlyUncovered(tile[0], tile[1]):
 					self.uncoverRest(tile[0], tile[1])
 					self.q.remove(tile)
 					self.p.add(tile)
@@ -110,9 +117,8 @@ class MyAI( AI ):
 					self.p.add(tile)
 					self.tempIndex += 1
 					self.currX = self.tempGrid[0][0]
-					self.currY = self.tempGrid[0][1] 
+					self.currY = self.tempGrid[0][1]
 					return Action(AI.Action.FLAG, self.currX, self.currY)
-			
 			'''Do heuristic move
 			   A flagging heuristic works better than an uncovering heuristic
 			'''
@@ -195,7 +201,7 @@ class MyAI( AI ):
 		for coor in grid:
 			if self.grid[coor[1]][coor[0]] == -2:
 				uncovered+=1
-		return mines == uncovered
+		return mines >= uncovered
 
 	def onlyUncovered(self, x: int, y: int) -> bool:
 		grid = self.getGrid(x, y)
@@ -220,6 +226,13 @@ class MyAI( AI ):
 		self.makingMove = True
 		self.flagging = True
 
+	def empty(self, x: int, y: int):
+		grid = self.getGrid(x, y)
+		for i in grid:
+			if not i in self.p:
+				return False
+		return True
+
 	def uncoverRest(self, x: int, y: int):
 		grid = self.getGrid(x, y)
 		temp = grid[:]
@@ -238,21 +251,54 @@ class MyAI( AI ):
 		for tile in searchSpace:
 			tileGrid = self.getGrid(tile[0], tile[1])
 			number = self.grid[tile[1]][tile[0]]
+			'''
 			for square in tileGrid:
 				if self.grid[square[1]][square[0]] == -1:
 					number -= 1
+			'''
 			for square in tileGrid:
 				if self.grid[square[1]][square[0]] == -2:
 					grid[square[1] * self.rowDimension + square[0]] += number
+		maxGrid = []
+		for i in range(len(grid)):
+			coorX = i % self.colDimension
+			coorY = math.floor(i / self.rowDimension)
+			if grid[i] == max(grid):
+				maxGrid.append((coorX, coorY))
+		'''
 		coor = grid.index(max(grid))
 		coorX = coor % self.colDimension
 		coorY = math.floor(coor / self.rowDimension)
+		print("Coor: " + str((coorY, coorX)))
+		'''
+		'''
+		tCoorX = 0
+		tCoorY = 0
+		if self.onEdge(coorX, coorY):
+			tCoorX, tCoorY = self.trackToEdge(coorX, coorY, grid)
+		else:
+			tCoorX, tCoorY = self.trackToEdge(coorX, coorY, grid)
+		if self.onEdge(tCoorX, tCoorY) or self.isCorner(tCoorX, tCoorY):
+			coorX = tCoorX
+			coorY = tCoorY
+		'''
+		coorX, coorY = maxGrid[0]
+		index = 1
+		while (coorX, coorY) in self.falseMoves and index < len(maxGrid):
+			coorX, coorY = maxGrid[index]
+			index += 1
+		if not (coorX, coorY) in self.falseMoves:
+			return coorX, coorY
+
+		randNum = randrange(0, len(grid) - 1)
+		coorX = randNum % self.colDimension
+		coorY = math.floor(randNum / self.rowDimension)
 		while (coorX, coorY) in self.falseMoves:
-			coor = grid[coor+1:].index(max(grid))
-			coorX = coor % self.colDimension
-			coorY = math.floor(coor / self.rowDimension)
-			print((coorX, coorY))
-		print("Heuristic Index: " + str(coorX) + " " + str(coorY))
+			randNum = randrange(0, len(grid))
+			coorX = randNum % self.colDimension
+			coorY = math.floor(randNum / self.rowDimension)
+		
+
 		return coorX, coorY
 		
 	def validateHeuristic(self, x: int, y: int) -> bool:
@@ -261,13 +307,93 @@ class MyAI( AI ):
 		for i in grid:
 			if self.grid[i[1]][i[0]] < 0:
 				continue
-			if self.onlyMines(guess[0], guess[1]) or self.onlyUncovered(guess[0], guess[1]):
+			if self.onlyMines(i[0], i[1]) or self.onlyUncovered(i[0], i[1]):
 				return True
 		return False
 		
+	def onEdge(self, x: int, y: int) -> bool:
+		return x == 0 or x == self.colDimension - 1 or y == 0 or y == self.rowDimension
+
+	def isCorner(self, x: int, y: int) -> bool:
+		return (x == 0 and y == 0) or (x == self.colDimension and y == 0) or (x == 0 and y == self.rowDimension) or (x == self.colDimension and y == self.rowDimension)
+
+	def inBounds(self, x: int, y: int) -> bool:
+		return x >= 0 and x < self.colDimension and y >= 0 and y < self.rowDimension
+
+	def trackToEdge(self, x: int, y: int, grid: list) -> tuple:
+		paths = [(x - 1, y), (x, y - 1), (x, y + 1), (x + 1, y)]
+		coor = (0, 0)
+		for i in range(len(paths)):
+			blocked = False
+			currCoor = paths[i]
+			while not blocked:
+				if self.onEdge(currCoor[0], currCoor[1]):
+					coor = currCoor
+					break
+				newCoor = (0, 0)
+				if i == 0:
+					newCoor = (currCoor[0] - 1, currCoor[1])
+
+				elif i == 1:
+					newCoor = (currCoor[0], currCoor[1] - 1)
+
+				elif i == 2:
+					newCoor = (currCoor[0], currCoor[1] + 1)
+
+				elif i == 3:
+					newCoor = (currCoor[0] + 1, currCoor[1])
 				
+				if grid[newCoor[1] * self.rowDimension + newCoor[0]] == 0:
+					coor = currCoor
+					blocked = True
+
+				elif grid[newCoor[1] * self.rowDimension + newCoor[0]] != 0:
+					currCoor = newCoor
+		return coor
 			
-			
+	def trackToCorner(self, x: int, y: int, grid: list) -> tuple:
+		if self.isCorner(x, y):
+			return x, y
+		paths = []
+		hor = False
+		ver = False
+		if x == 0 or x == self.colDimension:
+			paths = [(x, y - 1), (x, y + 1)]
+			ver = True
+		elif y == 0 or y == self.rowDimension:
+			paths = [(x - 1, y), (x + 1, y)]
+			hor = True
+
+		coor = (0, 0)
+		for i in range(len(paths)):
+			blocked = False
+			currCoor = paths[i]
+			while not blocked:
+				if self.isCorner(currCoor[0], currCoor[1]):
+					coor = currCoor
+					break
+				newCoor = (0, 0)
+				if i == 0 and hor:
+					newCoor = (currCoor[0] - 1, currCoor[1])
+
+				elif i == 1 and hor:
+					newCoor = (currCoor[0] + 1, currCoor[1])
+
+				elif i == 0 and ver:
+					newCoor = (currCoor[0], currCoor[1] - 1)
+
+				elif i == 1 and ver:
+					newCoor = (currCoor[0], currCoor[1] + 1)
+
+				if grid[newCoor[1] * self.rowDimension + newCoor[0]] == 0:
+					coor = currCoor
+					blocked = True
+
+				elif grid[newCoor[1] * self.rowDimension + newCoor[0]] != 0:
+					currCoor = newCoor
+		return coor
+
+
 			
 			
 			

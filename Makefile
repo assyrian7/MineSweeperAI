@@ -43,10 +43,6 @@ all: $(SOURCES)
 	@mkdir -p $(BIN_DIR)
 	@mkdir -p $(DOC_DIR)
 	@cp -a src/__pycache__/. bin
-	@for file in bin/* ; \
-	do \
-		mv -f $$file $${file%%.*}.pyc; \
-	done
 	@rm -rf src/__pycache__/
 
 submission: all
