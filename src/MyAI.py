@@ -55,6 +55,7 @@ class MyAI( AI ):
 		########################################################################
 		#							YOUR CODE BEGINS						   #
 		########################################################################
+		#print((self.currX, self.currY))
 		if not self.unflagged:
 			self.grid[self.currY][self.currX] = number
 		if self.unflagged:
@@ -126,6 +127,11 @@ class MyAI( AI ):
 			self.currX = guessTile[0]
 			self.currY = guessTile[1]
 			self.madeHeuristic = True
+			if guessTile in self.q:
+				self.q.remove(guessTile)
+			if guessTile not in self.p:
+				self.p.add(guessTile)
+			#print(self.grid)
 			return Action(AI.Action.FLAG, self.currX, self.currY)
 			
 		return Action(AI.Action.LEAVE)
@@ -258,13 +264,34 @@ class MyAI( AI ):
 			'''
 			for square in tileGrid:
 				if self.grid[square[1]][square[0]] == -2:
-					grid[square[1] * self.rowDimension + square[0]] += number
+					#print("Tile: " + str(square[1]) + " " + str(square[0]))
+					#print(square[1] * self.colDimension + square[0])
+					grid[square[1] * self.colDimension + square[0]] += number
+		
+		for i in range(len(grid)):
+			if grid[i] > 0:
+				coorX = i % self.colDimension
+				coorY = math.floor(i / self.colDimension)
+				if (coorX, coorY) in self.falseMoves:
+					#print("Zeroed: " + str((coorY, coorX)))
+					grid[i] = 0
+					#print("Val: " + str(grid[i]))
+		'''
 		maxGrid = []
 		for i in range(len(grid)):
-			coorX = i % self.colDimension
-			coorY = math.floor(i / self.rowDimension)
 			if grid[i] == max(grid):
+				coorX = i % self.colDimension
+				coorY = math.floor(i / self.rowDimension)
 				maxGrid.append((coorX, coorY))
+		'''
+		#print(len(grid))
+		index = grid.index(max(grid))
+		coorX = index % self.colDimension
+		coorY = math.floor(index / self.colDimension)
+		self.falseMoves.add((coorX, coorY))
+		#print("In: " + str(index) + " Index: " + str((coorY, coorX)) + " Max: " + str(max(grid)) + " Act: " + str(grid[index]))
+		#print(grid)
+		#input()
 		'''
 		coor = grid.index(max(grid))
 		coorX = coor % self.colDimension
@@ -282,11 +309,14 @@ class MyAI( AI ):
 			coorX = tCoorX
 			coorY = tCoorY
 		'''
-		coorX, coorY = maxGrid[0]
+
+		#coorX, coorY = maxGrid[0]
+		'''
 		index = 1
-		while (coorX, coorY) in self.falseMoves and index < len(maxGrid):
+		while index < len(maxGrid):
 			coorX, coorY = maxGrid[index]
 			index += 1
+		
 		if not (coorX, coorY) in self.falseMoves:
 			return coorX, coorY
 
@@ -297,7 +327,7 @@ class MyAI( AI ):
 			randNum = randrange(0, len(grid))
 			coorX = randNum % self.colDimension
 			coorY = math.floor(randNum / self.rowDimension)
-		
+		'''
 
 		return coorX, coorY
 		
